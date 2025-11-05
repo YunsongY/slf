@@ -1,0 +1,60 @@
+# -----------------------------------------------------------------------------
+# Rocq Project Git Ignore File
+# Combines standard Rust ignores with common formal verification build artifacts.
+# -----------------------------------------------------------------------------
+
+# 1. Standard Rust Build and Dependency Artifacts
+# ---------------------------------------------
+/target/
+.lock
+.cargo/config
+.DS_Store
+
+# IDE and Editor related files
+# -----------------------------
+# VSCode
+.vscode/
+
+# IntelliJ / CLion
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Emacs
+*~
+#*
+.#*
+
+# 2. Rocq / Coq Specific Artifacts
+# These are generated proof/compilation files that should not be tracked.
+# ---------------------------------------------------------------------
+
+# Compiled object files (produced by coqc or Rocq's compilation process)
+*.vo
+*.vos
+*.vio
+*.glob
+
+# Generated HTML documentation or similar outputs
+/doc/
+/html/
+/common/
+*.html
+/.devcontainer/
+
+# Log files and temporary files
+*.log
+*.aux
+*.out
+*.d
+*.lock
+
+# Compiled/cached files (if any are placed outside /target/)
+_build/
+
+# 3. Operating System / User Files
+# --------------------------------
+# Thumbnails and hidden files on various systems
+.DS_Store
+Thumbs.db
