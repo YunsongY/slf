@@ -35,6 +35,9 @@
 *.vos
 *.vio
 *.glob
+*.vok
+.lia.cache
+Makefile.coq*
 
 # Generated HTML documentation or similar outputs
 /doc/
