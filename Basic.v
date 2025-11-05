@@ -267,7 +267,13 @@ Definition quadruple : val :=
 (** Specify and verify the function [quadruple] to express that it returns
     [4*n]. Follow the pattern of the previous proof. *)
 
-(* FILL IN HERE *)
+Lemma triple_quadruple : forall (n:int),
+  triple (quadruple n)
+    \[]
+    (fun r => \[r = 4*n]).
+Proof.
+  xwp. xapp. xapp. xsimpl. math.
+Qed.
 
 (** [] *)
 
@@ -285,8 +291,13 @@ Definition inplace_double : val :=
 
 (** Specify and verify the function [inplace_double], following the pattern of
     the first example, [triple_incr]. *)
-
-(* FILL IN HERE *)
+Lemma triple_inplace_double : forall (p: loc) (n: int),
+  triple (inplace_double p)
+    (p ~~> n)
+    (fun _ => (p ~~> (2*n))).
+Proof.
+  xwp. xapp. xapp. xapp. xsimpl. math.
+Qed.
 
 (** [] *)
 
@@ -504,8 +515,13 @@ Definition transfer : val :=
     State and prove a lemma called [triple_transfer], specifying the behavior of
     [transfer p q] in the case where [p] and [q] denote two distinct references.
     *)
-
-(* FILL IN HERE *)
+Lemma triple_transfer : forall (p q: loc) (m n: int),
+  triple (transfer p q)
+    (p ~~> n \* q ~~> m)
+    (fun _ => p ~~> (n+m) \* q ~~> 0).
+Proof using.
+  xwp. xapp. xapp. xapp. xapp. xapp. xsimpl.
+Qed.
 
 (** [] *)
 
@@ -515,7 +531,13 @@ Definition transfer : val :=
     behavior of [transfer] when it is applied twice to the same argument. It
     should take the form [triple (transfer p p) _ _]. *)
 
-(* FILL IN HERE *)
+Lemma triple_transfer_aliased: forall (p: loc) (n: int),
+  triple (transfer p p)
+    (p ~~> n)
+    (fun _ => p ~~> 0).
+Proof using.
+  xwp. xapp. xapp. xapp. xapp. xapp. xsimpl.
+Qed.
 
 (** [] *)
 
@@ -618,7 +640,15 @@ Qed.
     Hint: Remember that the notation [\[P]] injects a Coq proposition into the
     language of Separation Logic predicates. *)
 
-(* FILL IN HERE *)
+Lemma triple_ref_greater_abstract : forall (p:loc) (n:int),
+  triple (ref_greater p)
+    (p ~~> n)
+    (funloc q => p ~~> n \* \exists m, q ~~> m \* \[m > n]).
+Proof using.
+  xwp. xapp. xapp. xapp. intros q. xsimpl. 
+  - reflexivity.
+  - math.
+Qed.
 
 (** [] *)
 
@@ -776,7 +806,9 @@ Lemma triple_get_and_free : forall p v,
   triple (get_and_free p)
     (p ~~> v)
     (fun r => \[r = v]).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using. 
+  xwp. xapp. xapp. xval. xsimpl. auto. 
+Qed.
 
 (** [] *)
 
@@ -817,7 +849,11 @@ Lemma triple_two_dice :
   triple <{ two_dice () }>
     \[]
     (fun r => \exists n, \[r = val_int n] \* \[2 <= n <= 12]).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  xwp. xapp triple_rand. { math. }
+  intros x. intros p1. xapp triple_rand. { math. }
+  intros y. intros p2. xapp. xapp. xsimpl. math. math. 
+Qed.
 
 (** [] *)
 
@@ -1040,7 +1076,13 @@ Lemma triple_repeat_incr : forall (m n:int) (p:loc),
     introducing [n] or [p], otherwise the induction principle obtained is too
     weak. *)
 
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  intros m. induction_wf IH: (downto 0) m.
+  unfold downto in IH.
+  xwp. xapp. xif; intros C. 
+  - xapp. xapp. xapp. math. math. xsimpl. math.
+  - xval. xsimpl. math.
+Qed.
 
 (** [] *)
 
@@ -1137,7 +1179,13 @@ Lemma triple_repeat_incr' : forall (p:loc) (n m:int),
   triple (repeat_incr p m)
     (p ~~> n)
     (fun _ => p ~~> (n + max 0 m)).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using. 
+  intros. gen n. induction_wf IH: (downto 0) m. unfold downto in IH.
+  xwp. xapp. xif; intros C.
+  - xapp. xapp. xapp IH. math. xsimpl. rewrite max_r. 
+    rewrite max_r. math. math. math.
+  - xval. xsimpl. rewrite max_l. math. math. 
+Qed.
 
 (** [] *)
 
@@ -1183,7 +1231,12 @@ Lemma triple_step_transfer : forall p q n m,
     Verify the function [step_transfer]. Hint: to set up the induction, follow
     the pattern from [triple_repeat_incr']. *)
 
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  intros p q n m. gen n. induction_wf IH: (downto 0) m. unfold downto in IH.
+  intros. xwp. xapp. xapp. xif; intros C.
+  - xapp. xapp. xapp IH. math. math. xsimpl. math.
+  - xval. xsimpl. math. math.
+Qed.
 
 (** [] *)
 
@@ -1257,7 +1310,12 @@ Lemma triple_factoimp_aux : forall (r:loc) (i n:int),
     (fun _ => r ~~> facto n).
 Proof using.
   introv. induction_wf IH: (upto n) i. introv Hn.
-  (* FILL IN HERE *) Admitted.
+  xwp. xapp. xif; intros C.
+  - xapp. xapp. xapp. xapp. xapp IH. math. math.
+    rewrite facto_succ. math. math. xsimpl.
+  - xval. xsimpl. assert (Heq: i = n). { math. } 
+    rewrite Heq. reflexivity.
+Qed.
 
 (** [] *)
 
@@ -1274,7 +1332,12 @@ Lemma triple_factoimp : forall n,
   triple (factoimp n)
     \[]
     (fun r => \[r = facto n]).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  intros. xwp. xapp. intro x. xapp triple_factoimp_aux. math. 
+  - rewrite facto_init. math. math.
+  - xapp. xapp. xval. xsimpl. reflexivity.
+Qed.
+
 
 (** [] *)
 
@@ -1388,7 +1451,18 @@ Lemma triple_factoimp_aux' : forall (r:loc) (i n:int),
     (fun _ => r ~~> facto n).
 Proof using.
   introv. induction_wf IH: (upto n) i. introv Hn.
-  (* FILL IN HERE *) Admitted.
+  xwp. xapp. xif; intro C.
+  - xapp. xapp. xapp. xapp. xapp triple_factoimp_aux.
+    + destruct Hn. 
+      * destruct H. rewrite H in C. rewrite H0 in C. math.
+      * split. math. math.
+    + rewrite facto_succ. rewrite Z.mul_comm. reflexivity. destruct Hn; math.
+    + xsimpl.
+  - xval. xsimpl. destruct Hn.
+    + destruct H. rewrite H. rewrite H0. rewrite facto_init. 
+      rewrite facto_init. math. math. math.
+    + assert (Heq: i = n). { math. } rewrite Heq. reflexivity.
+Qed.
 
 (** **** Exercise: 4 stars, standard, especially useful (triple_factoimp')
 
@@ -1403,7 +1477,14 @@ Lemma triple_factoimp' : forall n,
   triple (factoimp n)
     \[]
     (fun r => \[r = facto n]).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  introv Hn. xwp. xapp. intros r. xapp triple_factoimp_aux'.
+  - destruct (classic (n = 0)).
+    + left. math.
+    + right. math. 
+  - rewrite facto_init. reflexivity. math.
+  - xapp. xapp. xval. xsimpl. reflexivity.
+Qed.
 
 (* ################################################################# *)
 (** * Historical Notes *)
