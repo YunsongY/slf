@@ -139,7 +139,12 @@ Lemma MList_if : forall (p:loc) (L:list val),
         else \exists x q L', \[L = x::L']
              \* (p ~~~> `{ head := x; tail := q}) \* (MList L' q)).
 (** The proof is a bit technical: it may be skipped on a first reading. *)
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  intros. destruct L as [|x L']; simpl.
+  - xpull. intro H. case_if; intros. xsimpl*.
+  - xpull. intro q. xchange hrecord_not_null. 
+    intros H. case_if. xsimpl*.
+Qed.
 
 (** Note that the reciprocal entailment to the one stated in [MList_if] is also
     true, but we do not need it so we do not bother proving it here. In the rest
@@ -212,7 +217,7 @@ Proof using.
     cell. To that end, we exploit the tactic [xchange <- MList_cons], which is
     similar to [xchange MList_cons] but exploits the equality asserted by
     [MList_cons] in the reverse direction. *)
-    xapp. xchange <- MList_cons.
+    xapp. eapply himpl_trans. xchange <- (MList_cons p1 x L2). apply himpl_refl.
 (** Above, the tactic [xchange] discharges the goal because the LHS, after the
     operation, matches the RHS. To see the details, change the line of script
     to: [xapp. eapply himpl_trans. xchange <- MList_cons. apply himpl_refl.] *)
@@ -447,7 +452,15 @@ Lemma triple_mlength : forall L p,
   triple (mlength p)
     (MList L p)
     (fun r => \[r = val_int (length L)] \* (MList L p)).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  intros. gen p. induction_wf IH: list_sub L.
+  xwp. xapp. xif; intro C.
+  - xval. xchange MList_if. case_if. xpull. 
+    intros ->. xsimpl. rew_list*. xchanges* <- MList_nil.
+  - xchange MList_if. case_if. xpull.
+    intros x q L' ->. xapp. xapp. xapp. xsimpl. 
+    rew_list*. math. xchanges* <- MList_cons.
+Qed.
 
 (** [] *)
 
@@ -501,13 +514,28 @@ Definition mlength' : val :=
     can be used to prove arithmetic equalities such as
     [(n + 1) + m = n + (m + 1)]. *)
 
-(* FILL IN HERE *)
+Lemma triple_acclength : forall (L:list val) (p q:loc) (v:int),
+  triple (acclength q p)
+    (MList L p \* q ~~> v)
+    (fun _ => q ~~> (v + length L) \* MList L p).
+Proof using.
+  intros. gen p. gen v. induction_wf IH: list_sub L. 
+  xwp. xapp. xif; intro C; xchange MList_if; case_if.
+  - xapp. xpull. intros x r L' ->. xapp. xapp. xsimpl.
+    rew_list*. math. xchanges* <- MList_cons.
+  - xval. xpull. intros ->. xsimpl. 
+    rew_list*. math. xchanges* <- MList_nil.
+Qed.
 
 Lemma triple_mlength' : forall L p,
   triple (mlength' p)
     (MList L p)
     (fun r => \[r = val_int (length L)] \* (MList L p)).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  intro L. induction_wf IH: list_sub L. 
+  xwp. xapp. intro q. xapp triple_acclength. 
+  xapp. xsimpl. math.
+Qed.
 
 (** [] *)
 
@@ -550,7 +578,12 @@ Lemma triple_mfree : forall L p,
   triple (mfree p)
     (MList L p)
     (fun _ => \[]).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  intro L. induction_wf IH: list_sub L.
+  xwp. xapp. xif; intro C; xchange MList_if; case_if. 
+  - xpull. intros x q L' ->. xapp. xapp. xapp. xsimpl.
+  - xpull. intros ->. xval. xsimpl.
+Qed. 
 
 (** [] *)
 
@@ -603,13 +636,29 @@ Definition mrev : val :=
     variable. The syntax [xsimpl v] is also available if you want to specify the
     witness [x] inside a goal of the form [H1 ==> (\exists x, H2)]. *)
 
-(* FILL IN HERE *)
+Lemma triple_mrev_aux : forall L1 L2 p q,
+  triple (mrev_aux p q)
+    (MList L1 p \* MList L2 q)
+    (funloc r => MList ((rev L2) ++ L1) r).
+Proof using.
+  intros L1 L2. gen L1. induction_wf IH: list_sub L2.
+  xwp. xapp. xif; intros C; xchange MList_if; case_if.
+  - xval. xsimpl*. intros ->. rew_list*.
+  - xpull. intros x r' L2' ->. xapp. xapp. xapp. rew_list*.
+    xchange <- MList_cons. xsimpl*.
+Qed.
 
 Lemma triple_mrev : forall L p,
   triple (mrev p)
     (MList L p)
     (funloc q => MList (rev L) q).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  intro L. induction_wf IH: list_sub L. xwp. 
+  xapp triple_mrev_aux. xchange <- (MList_nil null). 
+  reflexivity. xsimpl.
+  - intros. apply H. 
+  - intros. rew_list*.
+Qed.
 
 (** [] *)
 
@@ -740,7 +789,10 @@ Lemma triple_push : forall L s x,
   triple (push s x)
     (Stack L s)
     (fun u => Stack (x::L) s).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  xwp. unfold Stack. xpull. intros p. xapp. xapp.
+  intros q. xapp. xapp. xapp. xapp. xsimpl*. rew_list*. math.
+Qed.
 
 (** [] *)
 
@@ -770,7 +822,12 @@ Lemma triple_pop : forall L s,
   triple (pop s)
     (Stack L s)
     (fun x => \exists L', \[L = x::L'] \* Stack L' s).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  xwp. unfold Stack. xpull. intro p. xapp. destruct L; simpl.
+  - destruct H. reflexivity.
+  - xchanges* MList_cons. intros q. xapp. xapp. xapp. xapp. xapp.
+    xapp. xapp. xval. xsimpl*. rew_list*. math.
+Qed.
 
 (** [] *)
 
@@ -790,7 +847,12 @@ Lemma triple_top : forall L s,
   triple (top s)
     (Stack L s)
     (fun x => \exists L', \[L = x::L'] \* Stack L s).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  xwp. destruct L; simpl.
+  - destruct H. reflexivity.
+  - unfold Stack. xapp. intros p q ->. xchanges* MList_cons. 
+    intros. xapp. xsimpl*. xchanges <- MList_cons.
+Qed.
 
 (** [] *)
 
