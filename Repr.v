@@ -1003,7 +1003,12 @@ Lemma triple_mnode' : forall T1 T2 n p1 p2,
   triple (mnode n p1 p2)
     (MTree T1 p1 \* MTree T2 p2)
     (funloc p => MTree (Node n T1 T2) p).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using. 
+  intros. xapp triple_mnode. intro p3.
+  xchange <- (MTree_Node p3).
+  xsimpl*.
+Qed.
+  
 
 #[global] Hint Resolve triple_mnode' : triple.
 
@@ -1051,7 +1056,21 @@ Lemma triple_tree_copy : forall p T,
   triple (tree_copy p)
     (MTree T p)
     (funloc q => (MTree T p) \* (MTree T q)).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  intros. gen p. induction_wf IH: tree_sub T.
+  xwp. xapp. xif; intro C.
+  - xval. xchange (MTree_if p). case_if. xpull.
+    intros ->. xsimpl*. xchange <- (MTree_Leaf p).
+    + exact C0.
+    + xsimpl*. xchange <- (MTree_Leaf null). auto.  
+  - xchange (MTree_if p). case_if.
+    xapp. intros v p1 p2 T1 T2 -> v' ->. xapp. xapp. xapp.  
+    + exact (tree_sub_1 v T1 T2).
+    + intro p3. xapp. 
+      * exact (tree_sub_2 v T1 T2).
+      * intro p4. xapp. intro p5. xsimpl*.
+        xchange <- (MTree_Node p).
+Qed.
 
 (** [] *)
 
@@ -1112,13 +1131,33 @@ Fixpoint treesum (T:tree) : int :=
     Prove the correctness of the function [mtreesum]. Hint: to begin with, state
     and prove the specification lemma [triple_treeacc]. *)
 
-(* FILL IN HERE *)
+Lemma triple_treeacc : forall (T:tree) (p:loc) (lv:loc) (v:int),
+  triple (treeacc lv p)
+    (MTree T p \* lv ~~> v)
+    (fun _ => MTree T p \* lv ~~> (v + treesum T)).
+Proof using.
+  intros. gen p v. induction_wf IH: tree_sub T.
+  xwp. xapp. xif; intro C.
+  - xchange (MTree_if p). case_if. xapp. intros v' p1 p2 T1 T2 -> v'' ->.
+    xapp. xapp. xapp. xapp. xapp. 
+    + exact (tree_sub_1 v' T1 T2).
+    + xapp. xapp. 
+      * exact (tree_sub_2 v' T1 T2).
+      * xsimpl*. math. xchange <- (MTree_Node p).
+  - xval. xchange (MTree_if p). case_if.   
+    xpull. intros ->. xsimpl*. 
+    + simpl. math.
+    + xchange <- (MTree_Leaf p). exact C0.
+Qed.
 
 Lemma triple_mtreesum : forall T p,
   triple (mtreesum p)
     (MTree T p)
     (fun r => \[r = treesum T] \* (MTree T p)).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using. 
+  intros. xwp. xapp. intro lv. xapp (triple_treeacc T p).
+  xapp. xsimpl*.
+Qed.
 
 (** [] *)
 
@@ -1250,7 +1289,11 @@ Lemma triple_apply_counter_abstract : forall f n,
   triple (f ())
     (IsCounter f n)
     (fun r => \[r = n+1] \* (IsCounter f (n+1))).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.  
+  intros. xtriple. unfold IsCounter. xpull. 
+  intros p Hf. xapp (Hf n). xsimpl*.
+Qed. 
+  
 
 (** [] *)
 
@@ -1293,7 +1336,14 @@ Lemma triple_test_counter :
   triple (test_counter ())
     \[]
     (fun r => \[r = 3] \* (\exists H, H)).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  xwp. xapp triple_create_counter_abstract. intro c1.
+  xapp triple_create_counter_abstract. intro c2.
+  xapp triple_apply_counter_abstract.
+  xapp triple_apply_counter_abstract.
+  xapp triple_apply_counter_abstract.
+  xapp. xsimpl*.
+Qed.
 
 (** [] *)
 
