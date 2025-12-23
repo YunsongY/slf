@@ -1492,7 +1492,25 @@ Lemma triple_miter : forall (I:list val->hprop) L (f:val) p,
   triple (miter f p)
     (MList L p \* I nil)
     (fun u => MList L p \* I L).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using. 
+  introv Hf.
+  cuts G: (forall L2 p L1, L = L1 ++ L2 ->
+    triple (miter f p)
+      (MList L2 p \* I L1) 
+      (fun _ => MList L2 p \* I L)).
+  { applys G. rew_list. reflexivity. }
+  intros L2. induction_wf IH: list_sub L2. intros p1 L1 EQ.
+  xwp. xapp. xif; intros C.
+  - xchange (MList_if p1). case_if. xpull. intros x q L2' ->.
+    xapp. xapp. xapp. xapp.
+    + exact (list_sub_cons x L2').
+    + rewrite EQ. rew_list. reflexivity.
+    + xchange <- (MList_cons p1).
+  - xval. xchange (MList_if p1). case_if. xpull. intros ->.
+    rewrite app_nil_r in EQ. subst L1.
+    xsimpl*.
+    xchange <- (MList_nil p1). exact C0.
+Qed.
 
 (** [] *)
 
@@ -1537,7 +1555,13 @@ Lemma triple_mlength_using_miter : forall p L,
   triple (mlength_using_miter p)
     (MList L p)
     (fun r => \[r = length L] \* MList L p).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  intros. xwp. xapp. intros c.
+  xfun. intros f Hf.
+  xapp (triple_miter (fun K => c ~~> (length K))).
+  - intros x L1 L2 heq. applys Hf. xapp. xsimpl. rew_list. math.
+  - xapp. xsimpl. reflexivity.
+Qed. 
 
 (** [] *)
 
@@ -1596,7 +1620,16 @@ Lemma triple_cps_facto_aux : forall (n:int) (k:val) (F:int->int),
   triple (cps_facto_aux n k)
     \[]
     (fun r => \[r = F (facto n)]).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  intros n. induction_wf IH: (downto 0) n. intros.
+  xwp. xapp. xif.
+  - intro hn. xapp. xsimpl. rewrite facto_init. reflexivity. math.
+  - intro hn. xfun. intros. xapp. xapp (>> IH (fun t => F (n * t))).
+    + rewrite downto_eq. math.
+    + math.
+    + intros. xapp. xapp. xapp. xsimpl*.
+    + xsimpl*. rewrite <- facto_step. reflexivity. math.
+Qed.
 
 (** [] *)
 
@@ -1611,7 +1644,13 @@ Lemma triple_cps_facto : forall n,
   triple (cps_facto n)
     \[]
     (fun r => \[r = facto n]).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using. 
+  intros. xwp. xfun. intros.
+  remember (fun r : int => r) as F.
+  xapp (>> triple_cps_facto_aux F).
+  math. intros. xapp. xval. xsimpl. subst. auto. 
+  xsimpl. subst. auto.
+Qed.
 
 (** [] *)
 
@@ -1689,7 +1728,16 @@ Lemma triple_cps_append_aux : forall H Q (L1 L2:list val) (p1 p2:loc) (k:val),
   triple (cps_append_aux p1 p2 k)
     (MList L1 p1 \* MList L2 p2 \* H)
     Q.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  intros H Q L1. gen H Q. induction_wf IH: list_sub L1. intros.
+  xwp. xapp. xif.
+  - intros. xchange (MList_if p1). case_if. xsimpl*. intros ->. xapp. xsimpl*.
+  - intros. xchange (MList_if p1). case_if. xsimpl*. intros x p3 L1' ->. 
+    xapp. xfun. intros. remember (p1 ~~~> `{ head := x; tail := p3}) as H'.
+    xapp (>> IH (H \* H') Q). auto.
+    + intros. xapp. subst. xapp. xapp. xchange <- MList_cons. xsimpl*.
+    + xsimpl*.
+Qed.
 
 (** [] *)
 
@@ -1703,7 +1751,14 @@ Lemma triple_cps_append : forall (L1 L2:list val) (p1 p2:loc),
   triple (cps_append p1 p2)
     (MList L1 p1 \* MList L2 p2)
     (funloc p3 => MList (L1++L2) p3).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using. 
+  intros. xwp. xfun. intros. 
+  remember \[] as H1.
+  remember (funloc p => MList (L1 ++ L2) p) as Q.
+  xapp (>> triple_cps_append_aux H1 Q); subst.
+  - intros. xapp. xval. subst. xsimpl. reflexivity.
+  - xsimpl. intros. auto.
+Qed.
 
 (** [] *)
 
