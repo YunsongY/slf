@@ -378,7 +378,7 @@ Proof using.
   intros. apply hprop_eq. split.
 (** Then we reveal the definitions of [==>], [hexists] and [hstar]. *)
   { intros (h1&h2&M1&M2&D&U). destruct M1 as (x&M1). exists* x h1 h2. }
-  { intros (x&M). destruct M as (h1&h2&M1&M2&D&U). exists h1 h2.
+  { intros (x&M). hnf in M. destruct M as (h1&h2&M1&M2&D&U). hnf. exists h1 h2.
     splits~. exists* x. }
 Qed.
 
@@ -397,7 +397,14 @@ Qed.
 
 Lemma hstar_hempty_l : forall H,
   \[] \* H = H.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using. 
+  intro H. apply predicate_extensionality. intro h. split.
+  - intro M. hnf in M. destruct M as (h1&h2&M1&M2&D&U). 
+    apply hempty_inv in M1. subst h1. rewrite Fmap.union_empty_l in U.
+    subst h. auto.
+  - intro M. hnf. exists* (Fmap.empty : heap) h.
+    splits~. apply hempty_intro. rewrite Fmap.union_empty_l. auto.
+Qed.
 
 (** [] *)
 
@@ -472,7 +479,14 @@ Proof using.
     { exists* h2 h3. }
     { rewrite* @Fmap.disjoint_union_eq_r. }
     { rewrite* @Fmap.union_assoc in U. } }
-(* FILL IN HERE *) Admitted.
+  { intros (h'&h3&M1&M2&D&U). destruct M2 as (h1&h2&M3&M4&D'&U').
+    subst h3. rewrite Fmap.disjoint_union_eq_r in D. hnf. 
+    exists (h' \u h1) h2. splits.
+    { exists* h' h1. }
+    { apply M4. }
+    { rewrite* Fmap.disjoint_union_eq_l. }
+    { rewrite U. rewrite* Fmap.union_assoc. }}
+Qed.
 
 (** [] *)
 
@@ -492,7 +506,10 @@ Qed.
 
 Lemma hstar_comm_assoc : forall H1 H2 H3,
   H1 \* H2 \* H3 = H2 \* H1 \* H3.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using. 
+  intros. rewrite <- hstar_assoc. rewrite (hstar_comm H1 H2). 
+  rewrite hstar_assoc. reflexivity.
+Qed.
 
 (** [] *)
 
@@ -521,7 +538,19 @@ Proof using. (* FILL IN HERE *) Admitted.
 
 Lemma hstar_hpure_l : forall P H h,
   (\[P] \* H) h = (P /\ H h).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using. 
+  intros. apply propositional_extensionality. split.
+  - intros (h1&h2&(HP&M1)&M2&D&U).
+    subst h1. 
+    rewrite Fmap.union_empty_l in U. subst h.
+    split; auto.
+  - intros (HP&M).
+    exists (Fmap.empty: heap) h. splits.
+    { split; auto. }
+    { auto. }
+    { apply Fmap.disjoint_empty_l. }
+    { rewrite Fmap.union_empty_l. auto. }
+Qed.
 
 (** [] *)
 
@@ -661,7 +690,10 @@ Axiom functional_extensionality : forall A B (f g:A->B),
 Lemma predicate_extensionality_derived : forall A (P Q:A->Prop),
   (forall x, P x <-> Q x) ->
   P = Q.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  intros A P Q H. apply functional_extensionality.
+  intros x. apply propositional_extensionality. apply H.
+Qed.
 
 (** [] *)
 
