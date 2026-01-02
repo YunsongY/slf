@@ -190,8 +190,8 @@ Definition heap : Type := fmap loc val.
     details are not relevant for understanding the rest of the chapter. *)
 
 Global Instance Inhab_val : Inhab val.
-Proof using. apply (Inhab_of_val val_unit). Qed.
 
+Proof using. apply (Inhab_of_val val_unit). Qed.
 (* ----------------------------------------------------------------- *)
 (** *** Substitution *)
 
@@ -712,7 +712,13 @@ Lemma triple_conseq_frame : forall H2 H1 Q1 t H Q,
 
     Prove the combined consequence-frame rule. *)
 
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  introv M MH MQ.
+  applys triple_conseq (H1 \* H2) (Q1 \*+ H2).
+  - apply triple_frame. exact M.
+  - exact MH.
+  - exact MQ.
+Qed.
 
 (** [] *)
 
@@ -727,7 +733,10 @@ Proof using. (* FILL IN HERE *) Admitted.
 Lemma triple_hpure' : forall t (P:Prop) Q,
   (P -> triple t \[] Q) ->
   triple t \[P] Q.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  introv M. rewrite <- (hstar_hempty_r \[P]).
+  apply triple_hpure. exact M.
+Qed.
 
 (** [] *)
 
@@ -775,7 +784,7 @@ Proof using. unfolds triple. introv M MH MQ HF. applys* eval_conseq. Qed.
     [Hprop] that the operator [Q \*+ H'] is a notation for
     [fun x => (Q x \* H')].
 
-    Intuitively, if the term [t] executes safely in a heap [H], then this this
+    Intuitively, if the term [t] executes safely in a heap [H], then this
     term should behave similarly in any extension of [H] with a disjoint part
     [H']. Moreover, its evaluation should leave this piece of state [H']
     unmodified throughout the execution of [t]. *)
@@ -853,7 +862,10 @@ Qed.
 Lemma triple_hexists : forall t (A:Type) (J:A->hprop) Q,
   (forall (x:A), triple t (J x) Q) ->
   triple t (hexists J) Q.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  introv M. intros h (x'&Hx). specialize (M x').
+  specialize (M h). apply M in Hx. exact Hx.
+Qed.
 
 (** [] *)
 
@@ -874,7 +886,10 @@ Proof using. (* FILL IN HERE *) Admitted.
 Lemma triple_named_heap : forall t H Q,
   (forall h, H h -> triple t (= h) Q) ->
   triple t H Q.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  introv M. intros h Hh. specialize (M h). apply M in Hh.
+  specialize (Hh h). apply Hh. reflexivity.
+Qed.
 
 (** [] *)
 
@@ -900,7 +915,10 @@ Module AlternativeExistentialRule.
 Lemma triple_hexists2 : forall A (Hof:A->hprop) (Qof:A->val->hprop) t,
   (forall x, triple t (Hof x) (Qof x)) ->
   triple t (\exists x, Hof x) (fun v => \exists x, Qof x v).
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using. 
+  introv M. eapply triple_hexists. intros x. specialize (M x).
+  eapply (triple_conseq M). eauto. xsimpl.
+Qed.
 
 (* [] *)
 
@@ -913,7 +931,12 @@ Proof using. (* FILL IN HERE *) Admitted.
 Lemma triple_hexists_of_triple_hexists2 : forall t (A:Type) (Hof:A->hprop) Q,
   (forall x, triple t (Hof x) Q) ->
   triple t (\exists x, Hof x) Q.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  introv M. applys triple_conseq (\exists x, Hof x) (fun v => \exists x: A, Q v).
+  - applys triple_hexists2. exact M.
+  - xsimpl.
+  - xsimpl. 
+Qed.
 
 (* [] *)
 
@@ -1115,7 +1138,13 @@ Inductive seval : heap->trm->(val->hprop)->Prop :=
 Lemma seval_val_inv : forall s v Q,
   seval s v Q ->
   Q v s.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  introv M. inversion M; subst.
+  - exact H1.
+  - exfalso. unfold reducible in H. 
+    destruct H as [s' [t' Hstep]].
+    inversion Hstep.
+Qed.
 
 (** [] *)
 
@@ -1129,7 +1158,14 @@ Proof using. (* FILL IN HERE *) Admitted.
 Lemma seval_terminates : forall s t Q,
   seval s t Q ->
   terminates s t.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  introv M. induction M.
+  - applys terminates_step. intros s' t' Hstep.
+    exfalso. applys reducible_val_inv s v.
+    unfold reducible. exists s' t'. exact Hstep.
+  - applys terminates_step. intros s' t' Hstep.
+    apply H1. exact Hstep.
+Qed.
 
 (** [] *)
 
@@ -1140,7 +1176,18 @@ Proof using. (* FILL IN HERE *) Admitted.
 Lemma seval_safe : forall s t Q,
   seval s t Q ->
   safe s t.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  introv M. induction M.
+  - unfold safe. introv Hstep. unfold notstuck. 
+    left. inversion Hstep; subst. 
+    + unfold trm_is_val. auto.
+    + inversion H0. 
+  - unfold safe. introv Hstep. unfold notstuck.
+    inversion Hstep; subst.
+    + right. exact H.
+    + specialize (H1 s2 t2 H2). unfold safe in H1. 
+      applys H1. exact H3.
+Qed.
 
 (** [] *)
 
@@ -1151,7 +1198,15 @@ Proof using. (* FILL IN HERE *) Admitted.
 Lemma seval_correct : forall s t Q,
   seval s t Q ->
   correct s t Q.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  introv M. induction M.
+  - unfold correct. introv Hstep. inversion Hstep; subst.
+    + exact H.
+    + inversion H0.
+  - unfold correct. introv Hstep. inversion Hstep; subst.
+    + exfalso. unfold reducible in H. destruct H as (s2&t'&H). inversion H. 
+    + specialize (H1 s2 t2 H2). unfold correct in H1. apply H1. exact H3.
+Qed.
 
 (** [] *)
 
@@ -1220,7 +1275,20 @@ Lemma seval_seq : forall s t1 t2 Q1 Q,
   seval s t1 Q1 ->
   (forall s1 v1, Q1 v1 s1 -> seval s1 t2 Q) ->
   seval s (trm_seq t1 t2) Q.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  introv M H. gen t2 Q. induction M; intros.
+  - applys seval_step.
+    + do 2 esplit. applys* step_seq. 
+    + introv R. invert R; try solve [intros; false]. 
+      * introv R. inversion R.
+      * introv -> -> -> -> ->. specialize (H0 s' v H). exact H0.
+  - applys seval_step.
+    + destruct H as [s' [t' Step]]. 
+      do 2 esplit. applys step_seq_ctx. apply Step.
+    + introv R. inverts R.
+      * applys H1. exact H8. exact H2.
+      * false. applys reducible_val_inv H.
+Qed.
 
 (** [] *)
 
@@ -1233,8 +1301,20 @@ Lemma seval_let : forall s x t1 t2 Q1 Q,
   seval s t1 Q1 ->
   (forall s1 v1, Q1 v1 s1 -> seval s1 (subst x v1 t2) Q) ->
   seval s (trm_let x t1 t2) Q.
-Proof using. (* FILL IN HERE *) Admitted.
-
+Proof using. 
+  introv M H. gen x t2 Q. induction M; intros.
+  - applys seval_step.
+    + do 2 esplit. applys step_let. 
+    + introv R. inverts R.
+      * inversion H7.
+      * applys H0. exact H.
+  - applys seval_step.
+    + destruct H as [s' [t' Step]].
+      do 2 esplit. applys step_let_ctx. apply Step. 
+    + introv R. inverts R.
+      * applys H1. exact H9. exact H2.
+      * false. applys reducible_val_inv H.
+Qed.
 (** [] *)
 
 Lemma seval_if : forall s b t1 t2 Q,
@@ -1463,7 +1543,12 @@ Lemma hoare_conseq : forall t H Q H' Q',
   H ==> H' ->
   Q' ===> Q ->
   hoare t H Q.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  introv M MH MQ. unfold hoare in *.
+  intros s Hs. apply MH in Hs. specialize (M s Hs). 
+  destruct M as (s'&v&M1&M2). exists s' v.
+  split; try assumption. apply MQ in M2. exact M2.
+Qed.
 
 (** [] *)
 
@@ -1486,7 +1571,10 @@ Definition btriple (t:trm) (H:hprop) (Q:val->hprop) : Prop :=
 Lemma btriple_frame : forall t H Q H',
   btriple t H Q ->
   btriple t (H \* H') (Q \*+ H').
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  introv M. unfold btriple in *. intro Hf.
+  specialize (M (H' \* Hf)). applys hoare_conseq M; try xsimpl.
+Qed.
 
 (** [] *)
 
@@ -1548,7 +1636,14 @@ Lemma hoare_let : forall x t1 t2 H Q Q1,
   hoare t1 H Q1 ->
   (forall v, hoare (subst x v t2) (Q1 v) Q) ->
   hoare (trm_let x t1 t2) H Q.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  introv M1 M2. unfold hoare in *. intros s Hs.
+  destruct (M1 s Hs) as (s1&v1&R1&H1).
+  destruct (M2 v1 s1 H1) as (s2&v2&R2&H2).
+  exists s2 v2. split.
+  - applys beval_let R1 R2.
+  - apply H2.
+Qed.
 
 (** [] *)
 
@@ -1561,7 +1656,12 @@ Lemma btriple_let : forall x t1 t2 Q1 H Q,
   btriple t1 H Q1 ->
   (forall v1, btriple (subst x v1 t2) (Q1 v1) Q) ->
   btriple (trm_let x t1 t2) H Q.
-Proof using. (* FILL IN HERE *) Admitted.
+Proof using.
+  introv M1 M2. unfold btriple in *. intro Hf.
+  applys hoare_let (Q1 \*+ Hf).
+  - applys M1.
+  - intros v. applys M2.
+Qed.
 
 (** [] *)
 
